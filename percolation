@@ -1,0 +1,168 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#define L 16
+#define N (L*L)
+#define EMPTY (-N-1)
+#define RUNS 100000
+int ptr[N+1];
+int nn[N+1][8];
+int order[N+1];
+long bigarray[N+1];
+
+void boundaries()
+{
+    int i;
+    for(i = 0; i<N; i++){
+        nn[i][0] = (i+1)%N;
+        nn[i][1] = (i+N-1)%N;
+        nn[i][2] = (i+L)%N;
+        nn[i][3] = (i+N-L)%N;
+        if(i%L==0) nn[i][1] = i+L-1;
+        if((i+1)%L==0) nn[i][0] = i-L+1;
+    }
+}
+
+void permutation()
+{
+    int i, j;
+    int temp;
+    for(i = 0; i<N; i++) order[i] = i;
+    for(i = 0; i<N; i++){
+        j = i+(N-i)*drand48();
+        temp = order[i];
+        order[i] = order[j];
+        order[j] = temp;
+    }
+}
+
+int findroot(int i)
+{
+    if(ptr[i]<0) return i;
+    return ptr[i] = findroot(ptr[i]);
+}
+
+void convolute()
+{
+    double binom[N+1];
+    for (int ihit = 1; ihit <= N; ++ihit)
+    {
+        int i;
+        double prob = ihit*1.0/N;
+        binom[ihit] = 1;
+        //here i = n - 1 of ZN PRE 01 paper    index = N + 1
+        //for (i = ihit + 1; i < index; ++i) binom[i] = binom[i-1]*(index-i)*1.0/i*prob/(1-prob);
+        //for (i = ihit - 1; i >= 0; --i) binom[i] = binom[i+1]*(i+1)*1.0/(index-1-i)*(1-prob)/prob;
+        for (i = ihit + 1; i <= N; ++i)
+            binom[i] = binom[i-1]*(N-i+1)*1.0/i*prob/(1-prob);
+        for (i = ihit - 1; i >= 0; --i)
+            binom[i] = binom[i+1]*(i+1)*1.0/(N-i)*(1-prob)/prob;
+        double sum = 0;
+        for (i = 0; i <= N; ++i) sum += binom[i];
+        for (i = 0; i <= N; ++i) binom[i] /= sum;
+        
+        for (i = 0; i <= N; ++i) sum += bigarray[i]*binom[i];
+        double a = ((double)pow(L,0.104166667));
+        double b = (prob-0.592746)*((double)pow(L,0.75));
+        printf("%12d%10.5f%18.8e%18.8e%18.8e%18.8e\n", ihit, prob, bigarray[ihit]*1.0/RUNS, sum/RUNS, b, a*bigarray[ihit]*1.0/(RUNS*1.0*L*L));
+    }
+
+    int i, ihit;
+    double prob = 0.592746;
+    ihit = (int)(N*prob);
+    binom[ihit] = 1;
+    for (i = ihit + 1; i <= N; ++i)
+        binom[i] = binom[i-1]*(N-i+1)*1.0/i*prob/(1-prob);
+    for (i = ihit - 1; i >= 0; --i)
+        binom[i] = binom[i+1]*(i+1)*1.0/(N-i)*(1-prob)/prob;
+    double sum = 0;
+    for (i = 0; i <= N; ++i) sum += binom[i];
+    for (i = 0; i <= N; ++i) binom[i] /= sum;
+    
+    for (i = 0; i <= N; ++i) sum += bigarray[i]*binom[i];
+    double a = ((double)pow(L,0.104166667));
+    double b = (prob-0.592746)*((double)pow(L,0.75));
+    printf("%12d%10.5f%18.8e%18.8e%18.8e%18.8e\n", ihit, prob, bigarray[ihit]*1.0/RUNS, sum/RUNS, b, a*bigarray[ihit]*1.0/(RUNS*1.0*L*L));
+    
+    
+    
+    //printf("%ld\n",bigarray[0]);
+}
+
+/*void convolute(）
+{
+    double binom[N+1];
+    for (int j = 1; j <= N; j++)
+    {
+        int n, i;
+        double prob = j*1.0/N;
+        binom[j] = 1;
+       
+        for (n = j+1; n <= N; ++n)
+            binom[n] = binom[n-1]*(N-n+1)*1.0/n*prob/(1-prob);
+        for (n = j - 1; n >= 0; --n)
+            binom[n] = binom[n+1]*(n+1)*1.0/(N-n)*(1-prob)/prob;
+        double sum = 0;
+        for (i = 0; i <= N; ++i) sum += binom[i];
+        for (i = 0; i <= N; ++i) binom[i] /= sum;
+        //  if (j == N/2) for (i = 0; i <= N; ++i)  printf("%10d%20.8f\n", i, binom[i]);
+        sum = 0;
+        for (n = 1; n <= (N); ++n) sum += bigarray[n-1]*binom[n];
+        int dl = (int)(L*sqrt(prob*(1-prob)) + 0.5);
+        printf("%12d%10.5f%18.8e%18.8e", j, prob, bigarray[j-1]*1.0/RUNS, sum/RUNS);
+        printf("%18.8e\n", (bigarray[j-1-dl]+bigarray[j-1+dl])*0.5/RUNS);
+    }
+}*/
+
+void percolate()
+{
+    int i,j,nei;
+    int k = 0;
+    int s1,s2;
+    int r1,r2;
+    int big = 1;  // changed from zero to 1, since the first cluster will not be counted
+    for(i = 0;i<N;i++)
+        ptr[i] = EMPTY;
+    for(i = 0; i<N; i++){
+        r1 = s1 = order[i];
+        ptr[s1] = -1;
+        for(j = 0; j<4; j++){
+            s2 = nn[s1][j];
+            if(ptr[s2]!=EMPTY){
+                r2 = findroot(s2);
+                if(r2!=r1){
+                    if(ptr[r1]>ptr[r2]){
+                        ptr[r2]+=ptr[r1];
+                        ptr[r1] = r2;
+                        r1 = r2;
+                    }
+                    else{
+                        ptr[r1]+=ptr[r2];
+                        ptr[r2] = r1;
+                    }
+                    if(-ptr[r1]>big) big = -ptr[r1];
+                }
+            }
+        }
+        //printf("%i %i\n",i+1,big);
+        bigarray[i+1] += big;
+        if (i == 0) if (big > 1) printf("%10d\n", big);
+        //if(i+1 == big) k++;
+    }
+    //printf("%i\n", k);
+}
+
+int main()
+{
+    for(int i = 0; i<N; i++)
+        bigarray[i] = 0;
+    
+    srand48(11);
+    boundaries();
+    for(int i = 0; i<RUNS; i++){
+        permutation();
+        percolate();
+    }
+    convolute();
+    return 0;
+}
